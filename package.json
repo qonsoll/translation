@@ -1,6 +1,6 @@
 {
   "name": "@qonsoll/translation",
-  "version": "0.3.5",
+  "version": "0.3.7",
   "scripts": {
     "build": " rollup -c",
     "prepare": "npm run build"
@@ -11,7 +11,7 @@
     "dist"
   ],
   "peerDependencies": {
-    "firebase": ">= 8.8.0 < 9.x",
+    "firebase": ">= 7.0.0 < 9.x",
     "react": ">= 16.8.0"
   },
   "devDependencies": {
