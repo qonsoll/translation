@@ -72,15 +72,23 @@ const TranslationsProvider = (props) => {
 
   // Function that looks like i18n t
   const t = (label) => {
-    const DBLabel = label in translations && translations[label]
-    if (!DBLabel && loaded) {
-      languages.forEach((lang) => {
-        const ref = `translations/${currentApp}/${lang.shortCode}/${label}`
-        db.ref(ref).set(label)
-      })
-    }
+    if (typeof label === 'string' && label) {
+      const DBLabel = translations && translations[label]
 
-    return DBLabel || label
+      // if (!DBLabel && loaded && Object.keys(translations).length) {
+      if (!DBLabel && loaded) {
+        languages.forEach((lang) => {
+          const ref = `translations/${currentApp}/${lang.shortCode}/${label}`
+          db.ref(ref).set(label)
+        })
+      }
+      return DBLabel || label
+    } else {
+      console.warn(
+        `Wrong value was passed in the translation function. Type of value is ${typeof label}`
+      )
+      return ''
+    }
   }
 
   return (
