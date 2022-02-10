@@ -10,7 +10,7 @@ const TranslationsProvider = (props) => {
     currentApp,
     defaultLanguage = 'en',
     db,
-    storage = window && window.localStorage,
+    storage = window?.localStorage,
     languages = [{ name: 'English', shortCode: 'en' }]
   } = props
 
@@ -27,7 +27,7 @@ const TranslationsProvider = (props) => {
 
   useEffect(() => {
     const getStorage = async () => {
-      const LSLang = storage && (await storage.getItem(storageKey))
+      const LSLang = await storage?.getItem(storageKey)
       if (!LSLang) {
         await storage.setItem(storageKey, defaultLanguage)
       } else {
@@ -47,7 +47,7 @@ const TranslationsProvider = (props) => {
       if (ref) {
         setLoading(true)
         const snapshot = await db.ref(ref).once('value')
-        const data = snapshot && snapshot.val()
+        const data = snapshot?.val()
         if (data && Object.keys(data).length) {
           setTranslations(data)
         }
@@ -73,7 +73,13 @@ const TranslationsProvider = (props) => {
   // Function that looks like i18n t
   const t = (label) => {
     if (typeof label === 'string' && label) {
-      const DBLabel = translations && translations[label]
+      if (/[.$#\[\]\/]/.test(label)) {
+        console.warn(
+          `label - "${label}", includes one of forbidden characters: . $ # [ ] / remove it from string.`
+        )
+        return ''
+      }
+      const DBLabel = translations?.[label]
 
       // if (!DBLabel && loaded && Object.keys(translations).length) {
       if (!DBLabel && loaded) {
