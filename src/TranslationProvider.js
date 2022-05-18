@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import TranslationsContext from './TranslationContext'
+import md5 from 'md5'
 
 const storageKey = 'language'
 
@@ -11,14 +12,15 @@ const TranslationsProvider = (props) => {
     defaultLanguage = 'en',
     db,
     storage = window?.localStorage,
-    languages = [{ name: 'English', shortCode: 'en' }]
+    languages = [{ name: 'English', shortCode: 'en' }],
+    initialState = {}
   } = props
 
   // STATES
   // State that indicates current language
   const [language, setLanguage] = useState(defaultLanguage)
   // State that indicates downloaded translations from the DB
-  const [translations, setTranslations] = useState({})
+  const [translations, setTranslations] = useState(initialState)
   // Loading state
   const [loading, setLoading] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -73,18 +75,14 @@ const TranslationsProvider = (props) => {
   // Function that looks like i18n t
   const t = (label) => {
     if (typeof label === 'string' && label) {
-      if (/[.$#\[\]\/]/.test(label)) {
-        console.warn(
-          `label - "${label}", includes one of forbidden characters: . $ # [ ] / remove it from string.`
-        )
-        return ''
-      }
+      const md5Label = md5(label)
+
       const DBLabel = translations?.[label]
 
       // if (!DBLabel && loaded && Object.keys(translations).length) {
       if (!DBLabel && loaded) {
         languages.forEach((lang) => {
-          const ref = `translations/${currentApp}/${lang.shortCode}/${label}`
+          const ref = `translations/${currentApp}/${lang.shortCode}/${md5Label}`
           db.ref(ref).set(label)
         })
       }
