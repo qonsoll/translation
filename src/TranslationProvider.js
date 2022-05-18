@@ -77,15 +77,20 @@ const TranslationsProvider = (props) => {
     if (typeof label === 'string' && label) {
       const md5Label = md5(label)
 
-      const DBLabel = translations?.[label]
+      const DBLabel = translations?.[md5Label]
 
+      // this will fix translations disappearing as it stops
+      // possibility of translations writing, instantly to the RDB
       // if (!DBLabel && loaded && Object.keys(translations).length) {
-      if (!DBLabel && loaded) {
-        languages.forEach((lang) => {
-          const ref = `translations/${currentApp}/${lang.shortCode}/${md5Label}`
-          db.ref(ref).set(label)
-        })
-      }
+      //   languages.forEach((lang) => {
+      //     /* Creating a reference to the database. */
+      //     const ref = `translations/${currentApp}/${lang.shortCode}/${md5Label}`
+
+      //     /* Setting the label to the database. */
+      //     db.ref(ref).set(label)
+      //   })
+      // }
+
       return DBLabel || label
     } else {
       console.warn(
