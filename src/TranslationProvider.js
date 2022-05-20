@@ -25,8 +25,54 @@ const TranslationsProvider = (props) => {
   const [loading, setLoading] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [isStorageLoaded, setIsStorageLoaded] = useState(false)
-  // LISTENERS
 
+	// FUNCTIONS
+  // Function set current language to the LS and provider state
+  const setCurrentLanguage = async (language) => {
+    setLanguage(language)
+    await storage.setItem(storageKey, language)
+  }
+  const saveTranslationForLanguage = ({
+    textLabel,
+    shortCode,
+    refEnding,
+    appName
+  }) => {
+    const appNameComputed = appName || currentApp
+    /* Creating a reference to the database. */
+    const ref = `translations/${appNameComputed}/${shortCode}/${refEnding}`
+
+    return db.ref(ref).set(textLabel)
+  }
+  // Function that looks like i18n t
+  const t = (label) => {
+    if (typeof label === 'string' && label) {
+      const md5Label = md5(label)
+
+      const DBLabel = translations?.[md5Label]
+
+      // this will fix translations disappearing as it stops
+      // possibility of translations writing, instantly to the RDB
+      // if (!DBLabel && loaded && Object.keys(translations).length) {
+			// 	languages?.forEach((lang) =>
+			// 	saveTranslationForLanguage({
+			// 		label,
+			// 		md5Label,
+			// 		shortCode: lang?.shortCode
+			// 	})
+			// 	)
+      // }
+
+      return DBLabel || label
+    } else {
+      console.warn(
+        `Wrong value was passed in the translation function. Type of value is ${typeof label}`
+      )
+      return ''
+    }
+  }
+
+  // LISTENERS
   useEffect(() => {
     const getStorage = async () => {
       const LSLang = await storage?.getItem(storageKey)
@@ -65,47 +111,13 @@ const TranslationsProvider = (props) => {
     }
   }, [db, language, isStorageLoaded])
 
-  // FUNCTIONS
-  // Function set current language to the LS and provider state
-  const setCurrentLanguage = async (language) => {
-    setLanguage(language)
-    await storage.setItem(storageKey, language)
-  }
-
-  // Function that looks like i18n t
-  const t = (label) => {
-    if (typeof label === 'string' && label) {
-      const md5Label = md5(label)
-
-      const DBLabel = translations?.[md5Label]
-
-      // this will fix translations disappearing as it stops
-      // possibility of translations writing, instantly to the RDB
-      // if (!DBLabel && loaded && Object.keys(translations).length) {
-      //   languages.forEach((lang) => {
-      //     /* Creating a reference to the database. */
-      //     const ref = `translations/${currentApp}/${lang.shortCode}/${md5Label}`
-
-      //     /* Setting the label to the database. */
-      //     db.ref(ref).set(label)
-      //   })
-      // }
-
-      return DBLabel || label
-    } else {
-      console.warn(
-        `Wrong value was passed in the translation function. Type of value is ${typeof label}`
-      )
-      return ''
-    }
-  }
-
   return (
     <TranslationsContext.Provider
       value={{
         setCurrentLanguage,
         language,
         translations,
+				saveTranslationForLanguage,
         loading,
         loaded,
         languages,
