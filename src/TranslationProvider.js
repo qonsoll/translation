@@ -26,7 +26,7 @@ const TranslationsProvider = (props) => {
   const [loaded, setLoaded] = useState(false)
   const [isStorageLoaded, setIsStorageLoaded] = useState(false)
 
-	// FUNCTIONS
+  // FUNCTIONS
   // Function set current language to the LS and provider state
   const setCurrentLanguage = async (language) => {
     setLanguage(language)
@@ -38,11 +38,22 @@ const TranslationsProvider = (props) => {
     refEnding,
     appName
   }) => {
-    const appNameComputed = appName || currentApp
-    /* Creating a reference to the database. */
-    const ref = `translations/${appNameComputed}/${shortCode}/${refEnding}`
+    return new Promise((resolve, reject) => {
+      const appNameComputed = appName || currentApp
 
-    return db.ref(ref).set(textLabel)
+      // appNameComputed - could be wrong if the initialization of library context got wrong
+      // shortCode - could be passed from the outside, should be a language short code
+      // refEnding - could be passed from the outside, but it should always be a string md5-hash
+      if (!appNameComputed || !shortCode || !refEnding) {
+        reject(
+          `appNameComputed(${appNameComputed}), shortCode(${shortCode}) and refEnding(${refEnding}) - are required parameters`
+        )
+      }
+      /* Creating a reference to the database. */
+      const ref = `translations/${appNameComputed}/${shortCode}/${refEnding}`
+
+      resolve(db.ref(ref).set(textLabel))
+    })
   }
   // Function that looks like i18n t
   const t = (label) => {
@@ -54,13 +65,13 @@ const TranslationsProvider = (props) => {
       // this will fix translations disappearing as it stops
       // possibility of translations writing, instantly to the RDB
       // if (!DBLabel && loaded && Object.keys(translations).length) {
-			// 	languages?.forEach((lang) =>
-			// 	saveTranslationForLanguage({
-			// 		label,
-			// 		md5Label,
-			// 		shortCode: lang?.shortCode
-			// 	})
-			// 	)
+      // 	languages?.forEach((lang) =>
+      // 	saveTranslationForLanguage({
+      // 		label,
+      // 		md5Label,
+      // 		shortCode: lang?.shortCode
+      // 	})
+      // 	)
       // }
 
       return DBLabel || label
@@ -117,7 +128,7 @@ const TranslationsProvider = (props) => {
         setCurrentLanguage,
         language,
         translations,
-				saveTranslationForLanguage,
+        saveTranslationForLanguage,
         loading,
         loaded,
         languages,
