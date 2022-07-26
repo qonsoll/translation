@@ -10,7 +10,8 @@ const TranslationsProvider = (props) => {
     children,
     currentApp,
     defaultLanguage = 'en',
-    db,
+    onWrite,
+    onRead,
     storage = window?.localStorage,
     languages = [{ name: 'English', shortCode: 'en' }],
     initialState = {}
@@ -52,7 +53,7 @@ const TranslationsProvider = (props) => {
       /* Creating a reference to the database. */
       const ref = `translations/${appNameComputed}/${shortCode}/${refEnding}`
 
-      resolve(db.ref(ref).set(textLabel))
+      resolve(onWrite?.({ ref, value: textLabel }))
     })
   }
   // Function that looks like i18n t
@@ -105,7 +106,7 @@ const TranslationsProvider = (props) => {
     const fetchTranslations = async () => {
       if (ref) {
         setLoading(true)
-        const snapshot = await db.ref(ref).once('value')
+        const snapshot = await onRead?.({ ref })
         const data = snapshot?.val()
         if (data && Object.keys(data).length) {
           setTranslations(data)
@@ -120,7 +121,7 @@ const TranslationsProvider = (props) => {
     return () => {
       isComponentMounted = false
     }
-  }, [db, language, isStorageLoaded])
+  }, [language, isStorageLoaded])
 
   return (
     <TranslationsContext.Provider
@@ -144,7 +145,8 @@ TranslationsProvider.propTypes = {
   currentApp: PropTypes.string.isRequired,
   languages: PropTypes.array.isRequired,
   defaultLanguage: PropTypes.string.isRequired,
-  db: PropTypes.object.isRequired,
+  onWrite: PropTypes.func.isRequired,
+  onRead: PropTypes.func.isRequired,
   storage: PropTypes.object
 }
 
