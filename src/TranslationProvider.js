@@ -42,7 +42,7 @@ const TranslationsProvider = (props) => {
     // Get ref to errors
     const ref = 'translations/logs/errors'
 
-    // Get formatted date and time, in format ISO
+    // Get formatted date and time, in format ISO. Delete '.' from string
     const [event] = new Date().toISOString().split('.')
 
     // Write error to RDB
