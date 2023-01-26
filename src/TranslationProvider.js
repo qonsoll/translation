@@ -42,16 +42,11 @@ const TranslationsProvider = (props) => {
     // Get ref to errors
     const ref = 'translations/logs/errors'
 
-    // Get formatted date and time, in format "2023 1 26 14:21:19"
-    const today = new Date()
-    const date =
-      today.getFullYear() + ' ' + (today.getMonth() + 1) + ' ' + today.getDate()
-    const time =
-      today.getHours() + ':' + today.getMinutes() + ':' + today.getSeconds()
-    const dateTime = `${date} ${time}`
+    // Get formatted date and time, in format ISO
+    const [event] = new Date().toISOString().split('.')
 
     // Write error to RDB
-    await onWrite?.({ ref, value: { [dateTime]: errorMessage } })
+    await onWrite?.({ ref, value: { [event]: errorMessage } })
   }
 
   const saveTranslationForLanguage = ({
