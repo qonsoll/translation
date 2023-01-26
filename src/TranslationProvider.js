@@ -16,9 +16,10 @@ const TranslationsProvider = (props) => {
     languages = [{ name: 'English', shortCode: 'en' }],
     initialState = {},
     useHashes = false,
-    saveNewAutomatically = false
+    saveNewAutomatically = false,
+    isLive = false
   } = props
-  console.log({ onRead })
+
   // STATES
   // State that indicates current language
   const [language, setLanguage] = useState(defaultLanguage)
@@ -84,7 +85,7 @@ const TranslationsProvider = (props) => {
         loaded &&
         Object.keys(translations).length
       ) {
-        //Save new translations automatically
+        //Save new translations automatically, try/catch block is inside saveTranslationForLanguage
         languages?.forEach((lang) =>
           saveTranslationForLanguage({
             textLabel: label,
@@ -122,15 +123,21 @@ const TranslationsProvider = (props) => {
     const ref = language && `translations/${currentApp}/${language}`
 
     const fetchTranslations = async () => {
-      if (ref) {
-        setLoading(true)
-        const snapshot = await onRead?.({ ref })
-        const data = snapshot?.val()
-        if (data && Object.keys(data).length) {
-          setTranslations(data)
+      try {
+        if (ref) {
+          setLoading(true)
+
+          onRead?.({
+            ref,
+            setTranslations,
+            options: { onlyOnce: !isLive }
+          })
+
+          setLoading(false)
+          setLoaded(true)
         }
-        setLoading(false)
-        setLoaded(true)
+      } catch (error) {
+        console.log(error)
       }
     }
 
@@ -164,9 +171,11 @@ TranslationsProvider.propTypes = {
   languages: PropTypes.array.isRequired,
   defaultLanguage: PropTypes.string.isRequired,
   onWrite: PropTypes.func.isRequired,
-  onRead: PropTypes.func.isRequired,
+  onRead: PropTypes.func,
   storage: PropTypes.object,
-  useHashes: PropTypes.bool
+  useHashes: PropTypes.bool,
+  saveNewAutomatically: PropTypes.bool,
+  isLive: PropTypes.bool
 }
 
 export default TranslationsProvider
