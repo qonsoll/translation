@@ -15,9 +15,10 @@ const TranslationsProvider = (props) => {
     storage = window?.localStorage,
     languages = [{ name: 'English', shortCode: 'en' }],
     initialState = {},
-    useHashes = false
+    useHashes = false,
+    saveNewAutomatically = false
   } = props
-
+  console.log({ onRead })
   // STATES
   // State that indicates current language
   const [language, setLanguage] = useState(defaultLanguage)
@@ -40,50 +41,58 @@ const TranslationsProvider = (props) => {
     refEnding,
     appName
   }) => {
-    return new Promise((resolve, reject) => {
-      const appNameComputed = appName || currentApp
+    try {
+      return new Promise((resolve, reject) => {
+        const appNameComputed = appName || currentApp
 
-      // appNameComputed - could be wrong if the initialization of library context got wrong
-      // shortCode - could be passed from the outside, should be a language short code
-      // refEnding - could be passed from the outside, but it should always be a string md5-hash
-      if (!appNameComputed || !shortCode || !refEnding) {
-        reject(
-          `appNameComputed(${appNameComputed}), shortCode(${shortCode}) and refEnding(${refEnding}) - are required parameters`
-        )
-      }
-      /* Creating a reference to the database. */
-      const ref = `translations/${appNameComputed}/${shortCode}/${refEnding}`
+        // appNameComputed - could be wrong if the initialization of library context got wrong
+        // shortCode - could be passed from the outside, should be a language short code
+        // refEnding - could be passed from the outside, but it should always be a string md5-hash
+        if (!appNameComputed || !shortCode || !refEnding) {
+          reject(
+            `appNameComputed(${appNameComputed}), shortCode(${shortCode}) and refEnding(${refEnding}) - are required parameters`
+          )
+        }
+        /* Creating a reference to the database. */
+        const ref = `translations/${appNameComputed}/${shortCode}`
 
-      resolve(onWrite?.({ ref, value: textLabel }))
-    })
+        resolve(onWrite?.({ ref, value: { [refEnding]: textLabel } }))
+      })
+    } catch (error) {
+      console.error(error)
+    }
   }
   // Function that looks like i18n t
   const t = (label) => {
     if (typeof label === 'string' && label) {
       let DBLabel = ''
+      let md5Label = ''
 
       if (useHashes) {
         // Use a hash as a key for translation
-        const md5Label = md5(label)
+        md5Label = md5(label)
 
         DBLabel = translations?.[md5Label]
-
-        // this will fix translations disappearing as it stops
-        // possibility of translations writing, instantly to the RDB
-        // if (!DBLabel && loaded && Object.keys(translations).length) {
-        // 	languages?.forEach((lang) =>
-        // 	saveTranslationForLanguage({
-        // 		label,
-        // 		md5Label,
-        // 		shortCode: lang?.shortCode
-        // 	})
-        // 	)
-        // }
       } else {
         // Use a simple label as a key for translation
         DBLabel = translations?.[label]
       }
 
+      if (
+        !DBLabel &&
+        saveNewAutomatically &&
+        loaded &&
+        Object.keys(translations).length
+      ) {
+        //Save new translations automatically
+        languages?.forEach((lang) =>
+          saveTranslationForLanguage({
+            textLabel: label,
+            refEnding: label || md5Label,
+            shortCode: lang?.shortCode
+          })
+        )
+      }
       return DBLabel || label
     } else {
       console.warn(
