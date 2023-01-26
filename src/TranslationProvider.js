@@ -36,6 +36,24 @@ const TranslationsProvider = (props) => {
     setLanguage(language)
     await storage.setItem(storageKey, language)
   }
+
+  // Function set error message and date&time to RDB
+  const handleError = async (errorMessage) => {
+    // Get ref to errors
+    const ref = 'translations/logs/errors'
+
+    // Get formatted date and time, in format "2023 1 26 14:21:19"
+    const today = new Date()
+    const date =
+      today.getFullYear() + ' ' + (today.getMonth() + 1) + ' ' + today.getDate()
+    const time =
+      today.getHours() + ':' + today.getMinutes() + ':' + today.getSeconds()
+    const dateTime = `${date} ${time}`
+
+    // Write error to RDB
+    await onWrite?.({ ref, value: { [dateTime]: errorMessage } })
+  }
+
   const saveTranslationForLanguage = ({
     textLabel,
     shortCode,
@@ -60,7 +78,7 @@ const TranslationsProvider = (props) => {
         resolve(onWrite?.({ ref, value: { [refEnding]: textLabel } }))
       })
     } catch (error) {
-      console.error(error)
+      handleError(error?.message)
     }
   }
   // Function that looks like i18n t
@@ -89,7 +107,7 @@ const TranslationsProvider = (props) => {
         languages?.forEach((lang) =>
           saveTranslationForLanguage({
             textLabel: label,
-            refEnding: label || md5Label,
+            refEnding: md5Label || label,
             shortCode: lang?.shortCode
           })
         )
@@ -137,7 +155,7 @@ const TranslationsProvider = (props) => {
           setLoaded(true)
         }
       } catch (error) {
-        console.log(error)
+        handleError(error?.message)
       }
     }
 
