@@ -14,7 +14,8 @@ const TranslationsProvider = (props) => {
     onRead,
     storage = window?.localStorage,
     languages = [{ name: 'English', shortCode: 'en' }],
-    initialState = {}
+    initialState = {},
+    useHashes = false
   } = props
 
   // STATES
@@ -59,21 +60,29 @@ const TranslationsProvider = (props) => {
   // Function that looks like i18n t
   const t = (label) => {
     if (typeof label === 'string' && label) {
-      const md5Label = md5(label)
+      let DBLabel = ''
 
-      const DBLabel = translations?.[md5Label]
+      if (useHashes) {
+        // Use a hash as a key for translation
+        const md5Label = md5(label)
 
-      // this will fix translations disappearing as it stops
-      // possibility of translations writing, instantly to the RDB
-      // if (!DBLabel && loaded && Object.keys(translations).length) {
-      // 	languages?.forEach((lang) =>
-      // 	saveTranslationForLanguage({
-      // 		label,
-      // 		md5Label,
-      // 		shortCode: lang?.shortCode
-      // 	})
-      // 	)
-      // }
+        DBLabel = translations?.[md5Label]
+
+        // this will fix translations disappearing as it stops
+        // possibility of translations writing, instantly to the RDB
+        // if (!DBLabel && loaded && Object.keys(translations).length) {
+        // 	languages?.forEach((lang) =>
+        // 	saveTranslationForLanguage({
+        // 		label,
+        // 		md5Label,
+        // 		shortCode: lang?.shortCode
+        // 	})
+        // 	)
+        // }
+      } else {
+        // Use a simple label as a key for translation
+        DBLabel = translations?.[label]
+      }
 
       return DBLabel || label
     } else {
@@ -147,7 +156,8 @@ TranslationsProvider.propTypes = {
   defaultLanguage: PropTypes.string.isRequired,
   onWrite: PropTypes.func.isRequired,
   onRead: PropTypes.func.isRequired,
-  storage: PropTypes.object
+  storage: PropTypes.object,
+  useHashes: PropTypes.bool
 }
 
 export default TranslationsProvider
