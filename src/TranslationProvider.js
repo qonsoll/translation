@@ -14,7 +14,10 @@ const TranslationsProvider = (props) => {
     onRead,
     storage = window?.localStorage,
     languages = [{ name: 'English', shortCode: 'en' }],
-    initialState = {}
+    initialState = {},
+    useHashes = false,
+    saveNewAutomatically = false,
+    isLive = false
   } = props
 
   // STATES
@@ -33,48 +36,77 @@ const TranslationsProvider = (props) => {
     setLanguage(language)
     await storage.setItem(storageKey, language)
   }
+
+  // Function set error message and date&time to RDB
+  const handleError = async (errorMessage) => {
+    // Get ref to errors
+    const ref = 'translations/logs/errors'
+
+    // Get formatted date and time, in format ISO. Delete '.' from string
+    const [event] = new Date().toISOString().split('.')
+
+    // Write error to RDB
+    await onWrite?.({ ref, value: { [event]: errorMessage } })
+  }
+
   const saveTranslationForLanguage = ({
     textLabel,
     shortCode,
     refEnding,
     appName
   }) => {
-    return new Promise((resolve, reject) => {
-      const appNameComputed = appName || currentApp
+    try {
+      return new Promise((resolve, reject) => {
+        const appNameComputed = appName || currentApp
 
-      // appNameComputed - could be wrong if the initialization of library context got wrong
-      // shortCode - could be passed from the outside, should be a language short code
-      // refEnding - could be passed from the outside, but it should always be a string md5-hash
-      if (!appNameComputed || !shortCode || !refEnding) {
-        reject(
-          `appNameComputed(${appNameComputed}), shortCode(${shortCode}) and refEnding(${refEnding}) - are required parameters`
-        )
-      }
-      /* Creating a reference to the database. */
-      const ref = `translations/${appNameComputed}/${shortCode}/${refEnding}`
+        // appNameComputed - could be wrong if the initialization of library context got wrong
+        // shortCode - could be passed from the outside, should be a language short code
+        // refEnding - could be passed from the outside, but it should always be a string md5-hash
+        if (!appNameComputed || !shortCode || !refEnding) {
+          reject(
+            `appNameComputed(${appNameComputed}), shortCode(${shortCode}) and refEnding(${refEnding}) - are required parameters`
+          )
+        }
+        /* Creating a reference to the database. */
+        const ref = `translations/${appNameComputed}/${shortCode}`
 
-      resolve(onWrite?.({ ref, value: textLabel }))
-    })
+        resolve(onWrite?.({ ref, value: { [refEnding]: textLabel } }))
+      })
+    } catch (error) {
+      handleError(error?.message)
+    }
   }
   // Function that looks like i18n t
   const t = (label) => {
     if (typeof label === 'string' && label) {
-      const md5Label = md5(label)
+      let DBLabel = ''
+      let md5Label = ''
 
-      const DBLabel = translations?.[md5Label]
+      if (useHashes) {
+        // Use a hash as a key for translation
+        md5Label = md5(label)
 
-      // this will fix translations disappearing as it stops
-      // possibility of translations writing, instantly to the RDB
-      // if (!DBLabel && loaded && Object.keys(translations).length) {
-      // 	languages?.forEach((lang) =>
-      // 	saveTranslationForLanguage({
-      // 		label,
-      // 		md5Label,
-      // 		shortCode: lang?.shortCode
-      // 	})
-      // 	)
-      // }
+        DBLabel = translations?.[md5Label]
+      } else {
+        // Use a simple label as a key for translation
+        DBLabel = translations?.[label]
+      }
 
+      if (
+        !DBLabel &&
+        saveNewAutomatically &&
+        loaded &&
+        Object.keys(translations).length
+      ) {
+        //Save new translations automatically, try/catch block is inside saveTranslationForLanguage
+        languages?.forEach((lang) =>
+          saveTranslationForLanguage({
+            textLabel: label,
+            refEnding: md5Label || label,
+            shortCode: lang?.shortCode
+          })
+        )
+      }
       return DBLabel || label
     } else {
       console.warn(
@@ -104,15 +136,21 @@ const TranslationsProvider = (props) => {
     const ref = language && `translations/${currentApp}/${language}`
 
     const fetchTranslations = async () => {
-      if (ref) {
-        setLoading(true)
-        const snapshot = await onRead?.({ ref })
-        const data = snapshot?.val()
-        if (data && Object.keys(data).length) {
-          setTranslations(data)
+      try {
+        if (ref) {
+          setLoading(true)
+
+          onRead?.({
+            ref,
+            setTranslations,
+            options: { onlyOnce: !isLive }
+          })
+
+          setLoading(false)
+          setLoaded(true)
         }
-        setLoading(false)
-        setLoaded(true)
+      } catch (error) {
+        handleError(error?.message)
       }
     }
 
@@ -146,8 +184,11 @@ TranslationsProvider.propTypes = {
   languages: PropTypes.array.isRequired,
   defaultLanguage: PropTypes.string.isRequired,
   onWrite: PropTypes.func.isRequired,
-  onRead: PropTypes.func.isRequired,
-  storage: PropTypes.object
+  onRead: PropTypes.func,
+  storage: PropTypes.object,
+  useHashes: PropTypes.bool,
+  saveNewAutomatically: PropTypes.bool,
+  isLive: PropTypes.bool
 }
 
 export default TranslationsProvider

@@ -1,6 +1,6 @@
 {
 	"name": "@qonsoll/translation",
-	"version": "0.5.0",
+	"version": "0.5.2",
 	"scripts": {
 		"build": " rollup -c",
 		"prepare": "npm run build"
