@@ -8,7 +8,7 @@ const storageKey = 'language'
 const TranslationsProvider = (props) => {
   const {
     children,
-    currentApp,
+    defaultApp,
     defaultLanguage = 'en',
     onWrite,
     onRead,
@@ -29,6 +29,7 @@ const TranslationsProvider = (props) => {
   const [loading, setLoading] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [isStorageLoaded, setIsStorageLoaded] = useState(false)
+  const [currentApp, setCurrentApp] = useState(defaultApp)
 
   // FUNCTIONS
   // Function set current language to the LS and provider state
@@ -53,7 +54,8 @@ const TranslationsProvider = (props) => {
     textLabel,
     shortCode,
     refEnding,
-    appName
+    appName,
+    isNew
   }) => {
     try {
       return new Promise((resolve, reject) => {
@@ -70,7 +72,7 @@ const TranslationsProvider = (props) => {
         /* Creating a reference to the database. */
         const ref = `translations/${appNameComputed}/${shortCode}`
 
-        resolve(onWrite?.({ ref, value: { [refEnding]: textLabel } }))
+        resolve(onWrite?.({ ref, value: { [refEnding]: textLabel }, isNew }))
       })
     } catch (error) {
       handleError(error?.message)
@@ -92,18 +94,15 @@ const TranslationsProvider = (props) => {
         DBLabel = translations?.[label]
       }
 
-      if (
-        !DBLabel &&
-        saveNewAutomatically &&
-        loaded &&
-        Object.keys(translations).length
-      ) {
+      // If in translation not exist translation for such lable, save it
+      if (!loading && !DBLabel && saveNewAutomatically && loaded) {
         //Save new translations automatically, try/catch block is inside saveTranslationForLanguage
         languages?.forEach((lang) =>
           saveTranslationForLanguage({
             textLabel: label,
             refEnding: md5Label || label,
-            shortCode: lang?.shortCode
+            shortCode: lang?.shortCode,
+            isNew: true
           })
         )
       }
@@ -114,6 +113,40 @@ const TranslationsProvider = (props) => {
       )
       return ''
     }
+  }
+  const fetchTranslations = async ({ appName, withLoading = true }) => {
+    const ref = language && `translations/${appName}/${language}`
+    setLoading(true)
+    if (withLoading) {
+      setLoaded(false)
+    }
+    try {
+      if (ref) {
+        await onRead?.({
+          ref,
+          setTranslations: (data) => {
+            setTranslations(data)
+
+            if (withLoading) {
+              setLoaded(true)
+            }
+            setLoading(false)
+          },
+          options: { onlyOnce: !isLive }
+        })
+      }
+    } catch (error) {
+      handleError(error?.message)
+      setLoading(false)
+
+      if (withLoading) {
+        setLoaded(true)
+      }
+    }
+  }
+  const _onCurrentAppChange = ({ appName, withLoading }) => {
+    fetchTranslations({ appName, withLoading })
+    setCurrentApp(appName)
   }
 
   // LISTENERS
@@ -130,41 +163,22 @@ const TranslationsProvider = (props) => {
     getStorage()
   }, [defaultLanguage])
 
-  // Fetching translations from the DB
+  // Fetching translations from the DB on language change
   useEffect(() => {
-    let isComponentMounted = true
-    const ref = language && `translations/${currentApp}/${language}`
+    loaded && fetchTranslations({ appName: currentApp, withLoading: false })
+  }, [language])
 
-    const fetchTranslations = async () => {
-      try {
-        if (ref) {
-          setLoading(true)
-
-          onRead?.({
-            ref,
-            setTranslations,
-            options: { onlyOnce: !isLive }
-          })
-
-          setLoading(false)
-          setLoaded(true)
-        }
-      } catch (error) {
-        handleError(error?.message)
-      }
-    }
-
-    isComponentMounted && isStorageLoaded && fetchTranslations()
-
-    return () => {
-      isComponentMounted = false
-    }
-  }, [language, isStorageLoaded])
+  // Initial translations fetch from the DB
+  useEffect(() => {
+    isStorageLoaded && fetchTranslations({ appName: currentApp })
+  }, [isStorageLoaded])
 
   return (
     <TranslationsContext.Provider
       value={{
         setCurrentLanguage,
+        setCurrentApp: _onCurrentAppChange,
+        currentApp,
         language,
         translations,
         saveTranslationForLanguage,
